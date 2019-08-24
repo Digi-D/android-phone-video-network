@@ -1,0 +1,2 @@
+# don't distribute socket.io with the rest of the code
+socket.io.js

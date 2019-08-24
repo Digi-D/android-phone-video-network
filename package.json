@@ -1,0 +1,17 @@
+{
+  "name": "the_way_we_tell_the_stories",
+  "version": "1.0.0",
+  "description": "video installation with ws triggers",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Dima Strakovsky",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^2.2.0",
+    "uuid": "^3.3.2"
+  }
+}

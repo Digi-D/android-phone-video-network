@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+    <head>
+            <meta charset="utf-8">
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+
+            <title>I am just a node in a network</title>
+            <script src="/js/socket.io.js"></script>
+
+    </head>
+    <body>
+
+        <video id="test-video" width="320px" height="240px" controls>
+            <source src="/video/compressed/test_2_0_0.mp4" id="mp4-src" type="video/mp4" >
+            Your browser does not support HTML5 video.
+        </video>
+
+        <script>
+
+            let FIRST_PLAY = true
+
+            const video = document.querySelector('#test-video')
+
+            const req = new XMLHttpRequest();
+            req.responseType = 'blob';
+
+            const video_seq = [
+                {
+                    name: "test",
+                    clip_index: 0,
+                    clip_urls: [
+
+                        "/video/compressed/test_2_0_0.mp4",
+                        "/video/compressed/test_2_0_1.mp4",
+                        "/video/compressed/test_2_0_2.mp4",
+                        "/video/compressed/test_2_0_3.mp4",
+                        "/video/compressed/test_2_0_4.mp4",
+                        "/video/compressed/test_2_0_5.mp4"
+                    ]
+                }
+            ]
+
+            let CURRENT_SEQ_ID = 0
+            let CURRENT_SEQ_BUFFER = []  // an array of video blobs
+
+            const PreloadClip = (index) => {
+                req.open('GET',video_seq[CURRENT_SEQ_ID].clip_urls[index], true)
+                req.send()
+            }
+
+            const PreloadSeq = (whichSeq) => {
+                CURRENT_SEQ_ID = whichSeq
+                PreloadClip(0)
+            }
+
+            req.onloadend = function() {
+
+                if (this.status === 200) {
+                    var videoBlob = this.response
+                    var vid = URL.createObjectURL(videoBlob)
+                    // Video is now downloaded
+                    // and we can set it as source on the video element
+                    //video.src = vid;
+                    //alert("finished loading")
+                    CURRENT_SEQ_BUFFER.push(vid)
+
+                    console.log("loaded file: ", video_seq[CURRENT_SEQ_ID].clip_index)
+
+                    video_seq[CURRENT_SEQ_ID].clip_index++
+                    if(video_seq[CURRENT_SEQ_ID].clip_index < video_seq[CURRENT_SEQ_ID].clip_urls.length){
+                        setTimeout(PreloadClip(video_seq[CURRENT_SEQ_ID].clip_index), 1000)
+                    }
+                    else{
+                        console.log("sequence loaded")
+                        PlayAll()
+                    }
+
+                }
+            }
+            req.onerror = function() {
+                // TODO Oh shit scenario
+                // implement error messages on phones
+            }
+
+
+
+
+            let playback_index = 0
+
+            const PlayAll = () => {
+                video.src = CURRENT_SEQ_BUFFER[playback_index]
+                video.play()
+            }
+
+            video.onended = () => {
+                if(FIRST_PLAY){
+                    PreloadSeq(0)
+                    FIRST_PLAY = false
+                }
+                else{
+                    playback_index++
+                    if(playback_index < CURRENT_SEQ_BUFFER.length){
+                        video.src = CURRENT_SEQ_BUFFER[playback_index]
+                        video.play()
+                    }
+                }
+            }
+
+
+        </script>
+    </body>
+
+</html>

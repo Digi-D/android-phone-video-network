@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+    <head>
+            <meta charset="utf-8">
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+
+            <title>I am just a node in a network</title>
+            <script src="/js/socket.io.js"></script>
+
+    </head>
+    <body>
+        <button id="request-id">Request ID</button>
+        <div id="report-id"></div>
+
+        <video id="test-video" width="320px" height="240px">
+            <source id="mp4-src" type="video/mp4">
+            Your browser does not support HTML5 video.
+        </video>
+
+        <script>
+            // Getting rid of flicker
+            // https://stackoverflow.com/questions/52503280/how-to-buffer-preload-html5-videos-using-javascript
+
+            const video_seq = [
+                {
+                    name: "test",
+                    clip_urls: [
+                    // live on the local machine
+                        "file:///sdcard/Download/public/video/compressed/test_2_0_0.mp4",
+                        "file:///sdcard/Download/public/video/compressed/test_2_0_1.mp4",
+                        "file:///sdcard/Download/public/video/compressed/test_2_0_2.mp4",
+                        "file:///sdcard/Download/public/video/compressed/test_2_0_3.mp4",
+                        "file:///sdcard/Download/public/video/compressed/test_2_0_4.mp4",
+                        "file:///sdcard/Download/public/video/compressed/test_2_0_5.mp4"
+                    ]
+                }
+            ]
+
+            const self = this
+            let device_id = 'no id initialized'
+            let PATH_TO_VIDEO = "none"
+
+            // const socket = io('http://localhost:3000')
+            // const socket = io('192.168.43.67:3000')
+            const socket = io()
+            console.log("made a hello call to socket server")
+
+            const request_id = document.querySelector('#request-id')
+            const report_id = document.querySelector('#report-id')
+            const test_video = document.querySelector('#test-video')
+
+            test_video.controls = true
+            test_video.preload = 'auto'
+
+            request_id.addEventListener("click", () => {
+                socket.emit('ENUMERATE', function(data){
+                   console.log(data)
+                   if (data.status === 'success'){
+                        device_id = data.id
+                        report_id.innerHTML = "I am number " + device_id
+                        request_id.style.display = 'none'
+                   }
+                   else if(data.status === 'bus_ready'){
+                        device_id = data.id
+                        report_id.innerHTML = "Final node reported " + device_id
+                        request_id.style.display = 'none'
+
+                        socket.emit("READY")
+
+                        // https://developer.mozilla.org/en-US/docs/Web/API/Fullscreen_API/Guide
+                        // test_video.webkitRequestFullscreen()
+                   }
+                   else {
+                        console.log(data.error_reason)
+                        report_id.innerHTML = data.error_reason
+                        request_id.style.display = 'none'
+                   }
+                })
+            })
+
+            test_video.onended = () => {
+                console.log("clip ended")
+                socket.emit("END_CLIP", { device_id: device_id })
+            }
+
+            test_video.onloadeddata = () => {
+                test_video.style.display = 'block'
+                setTimeout(PlayVideo, 100)
+            }
+
+            test_video.onerror = (e) => {
+                console.log(e)
+
+                // Reload on error - super common with Chrome
+                test_video.src = PATH_TO_VIDEO
+                test_video.load()
+            }
+
+            const PlayVideo = () => {
+                test_video.play()
+            }
+
+            socket.on("START_ALL", (data) => {
+                // preload sequence TODO!!!
+                console.log("Loaded seq " + data.seq_id)
+
+                //report back that seq is loaded
+                socket.emit("SEQ_PRELOADED", {seq_id: data.seq_id, device_id: device_id})
+            })
+
+            socket.on("PLAY", (data) =>{
+                if(data.device_id == device_id){
+                    if(data.clip_id >= video_seq[data.seq_id].clip_urls.length){
+                        socket.emit("END_SEQ", { device_id: device_id })
+                    }
+                    else {
+                        console.log("I have been called to the fight: ", video_seq[data.seq_id].clip_urls[data.clip_id])
+                        //test_video.style.display = 'none'
+                        PATH_TO_VIDEO = video_seq[data.seq_id].clip_urls[data.clip_id]
+                        test_video.src = PATH_TO_VIDEO
+                        // trying to kill cash -- works good on browser but not on mobile +"?killkillkillcash=" + Math.random().toString(36)
+                        test_video.load()
+                        PlayVideo()
+                    }
+                }
+            })
+
+            socket.on("STOP", () => {
+                // TODO
+                console.log("stopped all video clips")
+            })
+
+        </script>
+    </body>
+
+</html>
+
+
+
